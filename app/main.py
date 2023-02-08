@@ -101,12 +101,11 @@ def delete(id: int):
 
 @app.put("/posts/{id}")
 def update(id: int, payload: Post):
-    print(payload.dict())
-    try:
-        payload_dict = payload.dict()
-        payload_dict["id"] = id
-        my_posts[id-1] = payload_dict
-        return my_posts[id-1]
-    except IndexError:
+    cursor.execute("UPDATE posts SET title = %s, content = %s WHERE id = %s RETURNING *",
+                   (payload.title, payload.content, id))
+    updated_post = cursor.fetchone()
+    if not updated_post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-                            detail="This data doesn't exist")
+                            detail="This post doesn't exist!")
+    conn.commit()
+    return updated_post
