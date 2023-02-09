@@ -7,13 +7,15 @@ from ..database import get_db
 from .. import models
 
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/posts"
+)
 
 
 """ Retrive all of the posts """
 
 
-@router.get("/posts", response_model=List[PostResponse])
+@router.get("/", response_model=List[PostResponse])
 def get_all_posts(db: Session = Depends(get_db)):
     posts = db.query(models.Post).all()
     return posts
@@ -22,7 +24,7 @@ def get_all_posts(db: Session = Depends(get_db)):
 """ Retrive a single post from the database """
 
 
-@router.get("/posts/{id}", response_model=PostResponse)
+@router.get("/{id}", response_model=PostResponse)
 def get_single_post(id: int, response: Response, db: Session = Depends(get_db)):
 
     post = db.query(models.Post).filter(models.Post.id == id).first()
@@ -35,7 +37,7 @@ def get_single_post(id: int, response: Response, db: Session = Depends(get_db)):
 """--- Create a new post ---"""
 
 
-@router.post("/posts", status_code=status.HTTP_201_CREATED, response_model=PostResponse)
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=PostResponse)
 def create_post(payload: Post, db: Session = Depends(get_db)):
     new_post = models.Post(**payload.dict())
     db.add(new_post)
@@ -47,7 +49,7 @@ def create_post(payload: Post, db: Session = Depends(get_db)):
 """--- Delete an existing post ---"""
 
 
-@router.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete(id: int, db: Session = Depends(get_db)):
     post_query = db.query(models.Post).filter(models.Post.id == id)
     post = post_query.first()
@@ -62,7 +64,7 @@ def delete(id: int, db: Session = Depends(get_db)):
 """--- Update an existing post ---"""
 
 
-@router.put("/posts/{id}", response_model=PostResponse)
+@router.put("/{id}", response_model=PostResponse)
 def update(id: int, payload: Post, db: Session = Depends(get_db)):
     post_query = db.query(models.Post).filter(models.Post.id == id)
     post = post_query.first()

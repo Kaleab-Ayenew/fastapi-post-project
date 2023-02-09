@@ -9,10 +9,12 @@ from .. import models
 from ..utils import hash
 
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/users"
+)
 
 
-@router.post("/users", response_model=UserResponse)
+@router.post("/", response_model=UserResponse)
 def create_user(payload: UserCreate, db: Session = Depends(get_db)):
     hashed_pass = hash(payload.password)
     payload.password = hashed_pass
@@ -23,7 +25,7 @@ def create_user(payload: UserCreate, db: Session = Depends(get_db)):
     return new_user
 
 
-@router.get("/users/{id}", response_model=UserResponse)
+@router.get("/{id}", response_model=UserResponse)
 def get_single_user(id: int, db: Session = Depends(get_db)):
     user = db.query(models.User).filter(models.User.id == id).first()
     if not user:
