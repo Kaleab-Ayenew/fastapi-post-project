@@ -1,36 +1,29 @@
-from fastapi import FastAPI, Response, status, HTTPException
-from pydantic import BaseModel
-from typing import Optional
+from fastapi import FastAPI, Response, status, HTTPException, Depends
+from typing import Optional, List
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import time
+from passlib.context import CryptContext
 
+from sqlalchemy.orm import Session
+
+from . import models
+from .database import engine, SessionLocal, get_db
+
+from .schemas import Post, PostResponse, UserCreate, UserResponse
+
+
+models.Base.metadata.create_all(bind=engine)
 
 app = FastAPI()  # Main application instance
 
-
-class Post(BaseModel):  # Pydantic Data Model
-    title: str
-    content: str
-    draft: bool = False
-
-
-while True:  # Database Connection
-    try:
-        conn = psycopg2.connect(
-            host='localhost', database='fastapi', user='postgres', password="password", cursor_factory=RealDictCursor)
-        cursor = conn.cursor()
-        print("Database connected succesfully!")
-        break
-    except Exception as error:
-        print("Database connection failed.")
-        print(error)
-        time.sleep(5)
+hasher = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 @app.get("/")  # Index Endpoint
-def index():
-    return {"message": "hello"}
+def index(db: Session = Depends(get_db)):
+    posts = db.query(models.Post).all()
+    return {"data": posts}
 
 
 # *** API endpoints ***
@@ -39,43 +32,34 @@ def index():
 """ Retrive all of the posts """
 
 
-@app.get("/posts")
-def get_all_posts():
-    cursor.execute("""SELECT * FROM posts""")
-    posts = cursor.fetchall()
-    return {"posts": posts}
+@app.get("/posts", response_model=List[PostResponse])
+def get_all_posts(db: Session = Depends(get_db)):
+    posts = db.query(models.Post).all()
+    return posts
 
 
 """ Retrive a single post from the database """
 
 
-@app.get("/posts/{id}")
-def get_single_post(id: int, response: Response):
+@app.get("/posts/{id}", response_model=PostResponse)
+def get_single_post(id: int, response: Response, db: Session = Depends(get_db)):
 
-    cursor.execute("""SELECT * FROM posts WHERE id = %s """, (id,))
-    post = cursor.fetchone()
+    post = db.query(models.Post).filter(models.Post.id == id).first()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail="This post doesn't exist!")
     return post
-    # try:
-    #     return my_posts[id-1]
-    # except IndexError:
-    #     # response.status_code = status.HTTP_404_NOT_FOUND
-    #     # rsp = {"msg": "The data you requested doesn't exist"}
-    #     raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
-    #                         detail="The data you requested doesn't exist")
 
 
 """--- Create a new post ---"""
 
 
-@app.post("/posts", status_code=status.HTTP_201_CREATED)
-def create_post(payload: Post):
-    cursor.execute(
-        """INSERT INTO posts (title, content) VALUES (%s, %s) RETURNING *""", (payload.title, payload.content))
-    new_post = cursor.fetchone()
-    conn.commit()
+@app.post("/posts", status_code=status.HTTP_201_CREATED, response_model=PostResponse)
+def create_post(payload: Post, db: Session = Depends(get_db)):
+    new_post = models.Post(**payload.dict())
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
     return new_post
 
 
@@ -83,29 +67,39 @@ def create_post(payload: Post):
 
 
 @app.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete(id: int):
-    # try:
-    cursor.execute("DELETE FROM posts WHERE id = %s RETURNING *", (id,))
-    deleted_post = cursor.fetchone()
-    if not deleted_post:
+def delete(id: int, db: Session = Depends(get_db)):
+    post_query = db.query(models.Post).filter(models.Post.id == id)
+    post = post_query.first()
+    if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail="This post doesn't exist")
-    conn.commit()
-    return deleted_post
-    # except IndexError:
-    #     return Response(status_code=status.HTTP_404_NOT_FOUND)
+    post_query.delete(synchronize_session=False)
+    db.commit()
+    return None
 
 
 """--- Update an existing post ---"""
 
 
-@app.put("/posts/{id}")
-def update(id: int, payload: Post):
-    cursor.execute("UPDATE posts SET title = %s, content = %s WHERE id = %s RETURNING *",
-                   (payload.title, payload.content, id))
-    updated_post = cursor.fetchone()
-    if not updated_post:
+@app.put("/posts/{id}", response_model=PostResponse)
+def update(id: int, payload: Post, db: Session = Depends(get_db)):
+    post_query = db.query(models.Post).filter(models.Post.id == id)
+    post = post_query.first()
+    if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail="This post doesn't exist!")
-    conn.commit()
-    return updated_post
+    post_query.update(payload.dict(), synchronize_session=False)
+    db.commit()
+    db.refresh(post)
+    return post
+
+
+@app.post("/users", response_model=UserResponse)
+def create_user(payload: UserCreate, db: Session = Depends(get_db)):
+    hashed_pass = hasher.hash(payload.password)
+    payload.password = hashed_pass
+    new_user = models.User(**payload.dict())
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+    return new_user
