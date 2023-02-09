@@ -13,7 +13,6 @@ class Post(Base):
     draft = Column(Boolean, nullable=False, server_default='FALSE')
     created_at = Column(TIMESTAMP(timezone=True),
                         nullable=False, server_default=text('now()'))
-    # id = Column(Integer, primary_key=True, nullable=False)
 
 
 class User(Base):

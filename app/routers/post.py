@@ -8,7 +8,8 @@ from .. import models
 
 
 router = APIRouter(
-    prefix="/posts"
+    prefix="/posts",
+    tags=["Posts"]
 )
 
 
