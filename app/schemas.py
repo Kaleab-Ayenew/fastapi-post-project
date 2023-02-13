@@ -2,23 +2,6 @@ from pydantic import BaseModel, EmailStr
 from datetime import datetime
 
 
-class Post(BaseModel):  # Pydantic Data Model
-    title: str
-    content: str
-    draft: bool = False
-
-# We can create different Models for different requests based on the kind of Data we expect from each request
-
-
-class PostResponse(BaseModel):
-    title: str
-    content: str
-    draft: bool
-
-    class Config:
-        orm_mode = True
-
-
 class UserCreate(BaseModel):
     email: EmailStr
     password: str
@@ -36,3 +19,34 @@ class UserResponse(BaseModel):
 class UserLogin(BaseModel):
     email: EmailStr
     password: str
+
+
+class Post(BaseModel):  # Pydantic Data Model
+    title: str
+    content: str
+    draft: bool = False
+
+# We can create different Models for different requests based on the kind of Data we expect from each request
+
+
+class PostResponse(BaseModel):
+    id: int
+    title: str
+    content: str
+    draft: bool
+    owner: int
+    created_at: datetime
+    owner_info: UserResponse
+
+    class Config:
+        orm_mode = True
+
+
+class TokenSchema(BaseModel):
+    auth_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    user_id: int
+    email: EmailStr
