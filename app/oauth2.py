@@ -5,9 +5,11 @@ from datetime import datetime, timedelta
 from . import schemas, database
 from sqlalchemy.orm import Session
 
-SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+from .config import settings
+
+SECRET_KEY = settings.secret_key
+ALGORITHM = settings.algorithm
+ACCESS_TOKEN_EXPIRE_MINUTES = int(settings.token_exp_min)
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
@@ -43,4 +45,5 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         status_code=status.HTTP_401_UNAUTHORIZED, detail="Please provide valid credentials.", headers={
             "WWW-Authenticate": "Bearer"
         })
+
     return verify_token(token, error_exception)

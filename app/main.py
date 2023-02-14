@@ -1,10 +1,8 @@
-from fastapi import FastAPI, Depends
-from sqlalchemy.orm import Session
+from fastapi import FastAPI
 
 from . import models
-from .database import engine, get_db
-
-from .routers import post, user, auth
+from .database import engine
+from .routers import post, user, auth, vote
 
 models.Base.metadata.create_all(bind=engine)
 
@@ -13,9 +11,9 @@ app = FastAPI()  # Main application instance
 app.include_router(post.router)
 app.include_router(user.router)
 app.include_router(auth.router)
+app.include_router(vote.router)
 
 
 @app.get("/")  # Index Endpoint
-def index(db: Session = Depends(get_db)):
-    posts = db.query(models.Post).all()
-    return {"data": posts}
+def index():
+    return {"data": "Welcome to my API"}

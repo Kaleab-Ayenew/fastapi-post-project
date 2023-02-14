@@ -42,6 +42,14 @@ class PostResponse(BaseModel):
         orm_mode = True
 
 
+class PostVoteResponse(BaseModel):
+    Post: PostResponse
+    votes: int
+
+    class Config:
+        orm_mode = True
+
+
 class TokenSchema(BaseModel):
     auth_token: str
     token_type: str
@@ -50,3 +58,7 @@ class TokenSchema(BaseModel):
 class TokenData(BaseModel):
     user_id: int
     email: EmailStr
+
+
+class VoteRequest(BaseModel):
+    post_id: int

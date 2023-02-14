@@ -1,4 +1,3 @@
-from typing import List
 from ..schemas import UserCreate, UserResponse
 from sqlalchemy.orm import Session
 from fastapi import Response, status, HTTPException, Depends, APIRouter

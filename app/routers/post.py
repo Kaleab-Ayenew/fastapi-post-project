@@ -1,6 +1,7 @@
 from typing import List
-from ..schemas import Post, PostResponse, TokenSchema
+from ..schemas import Post, PostResponse, PostVoteResponse, TokenSchema
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from fastapi import Response, status, HTTPException, Depends, APIRouter
 
 from ..database import get_db
@@ -16,22 +17,21 @@ router = APIRouter(
 """ Retrive all of the posts """
 
 
-@router.get("/", response_model=List[PostResponse])
+@router.get("/", response_model=List[PostVoteResponse])
 def get_all_posts(db: Session = Depends(get_db), limit: int = 5, skip: int = 0, search: str | None = ""):
-    # posts = db.query(models.Post).all()
-    # posts = db.query(models.Post).limit(limit).all()
-    posts = db.query(models.Post).filter(
-        models.Post.title.contains(search)).limit(limit).offset(skip).all()
-    return posts
+    posts_with_votes = db.query(models.Post, func.count(models.Votes.user_id).label("votes")).join(
+        models.Votes, models.Post.id == models.Votes.post_id, isouter=True).group_by(models.Post.id).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
+    return posts_with_votes
 
 
 """ Retrive a single post from the database """
 
 
-@router.get("/{id}", response_model=PostResponse)
+@router.get("/{id}", response_model=PostVoteResponse)
 def get_single_post(id: int, response: Response, db: Session = Depends(get_db)):
 
-    post = db.query(models.Post).filter(models.Post.id == id).first()
+    post = db.query(models.Post, func.count(models.Votes.user_id).label("votes")).join(
+        models.Votes, models.Post.id == models.Votes.post_id, isouter=True).group_by(models.Post.id).filter(models.Post.id == id).first()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail="This post doesn't exist!")
